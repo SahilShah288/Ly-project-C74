@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Home, Search, Bell, Mail, User, ShieldCheck, 
+  Home, Search, Bell, ShieldCheck, 
   MoreHorizontal, MessageSquare, Repeat2, Heart, 
-  Share, Image, Smile, Mic, AlertCircle, Link2, 
-  Activity, CheckCircle2, Hexagon, Database, ChevronRight
+  Image, Smile, AlertCircle, Link2, 
+  Activity, CheckCircle2, Database, TrendingUp,
+  Users, FileText, Send
 } from 'lucide-react';
 import './index.css';
 
@@ -21,142 +22,230 @@ const getTrustColorClass = (score) => {
 
 const getTrustLabel = (score) => {
   if (score >= 8) return 'Highly Trusted';
-  if (score >= 5) return 'Mixed Context Context';
+  if (score >= 5) return 'Mixed Context';
   return 'False or Misleading';
 };
 
 const verifyClaim = async (text) => {
   return new Promise((resolve) => {
     setTimeout(() => {
-      const length = text.length;
       let score = 5;
       let sources = [];
       let summary = "";
 
       if (text.toLowerCase().includes("water")) {
         score = 9;
-        summary = "This claim aligns tightly with established scientific and medical consensus.";
-        sources = [
-          "National Science Foundation (NSF.gov)",
-          "Journal of Clinical Hydrology"
-        ];
+        summary = "This claim aligns with established scientific and medical consensus.";
+        sources = ["National Science Foundation (NSF.gov)", "Journal of Clinical Hydrology"];
       } else if (text.toLowerCase().includes("alien")) {
         score = 2;
-        summary = "No credible evidence exists to support this claim in global fact-checking archives.";
-        sources = [
-          "NASA official debunking records",
-          "Reuters Fact Action Network"
-        ];
+        summary = "No credible evidence exists to support this claim.";
+        sources = ["NASA official debunking records", "Reuters Fact Action Network"];
       } else {
         score = Math.floor(Math.random() * 10) + 1;
         if (score >= 8) {
-          summary = "Information corroborated across multiple reputable media outlets.";
+          summary = "Corroborated across multiple reputable outlets.";
           sources = ["Associated Press", "BBC News Network", "NPR Fact Check"];
         } else if (score >= 5) {
-          summary = "The premise has factual elements but lacks entirely accurate context.";
+          summary = "Factual elements present but context is incomplete.";
           sources = ["Snopes Core Check", "Wikipedia Extended Logs"];
         } else {
-          summary = "This claim matches known patterns of disinformation currently circulating.";
+          summary = "Matches known disinformation patterns.";
           sources = ["FactCheck.org", "PolitiFact"];
         }
       }
 
       resolve({ score, summary, sources });
-    }, 1800); 
+    }, 1800);
   });
 };
 
+// Subtle inline verification — expands inside the post card
 const VerifyWidget = ({ text }) => {
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [state, setState] = useState('idle'); // idle | loading | done
   const [result, setResult] = useState(null);
 
   const handleVerify = async () => {
-    setIsVerifying(true);
+    setState('loading');
     const res = await verifyClaim(text);
     setResult(res);
-    setIsVerifying(false);
+    setState('done');
   };
 
-  if (!result && !isVerifying) {
+  // idle: just the trigger button (rendered in post footer)
+  if (state === 'idle') return null;
+
+  // loading: spinner inside expanded panel  
+  if (state === 'loading') {
     return (
-      <div className="verify-module glass-box">
-        <button className="btn-verify-formal" onClick={handleVerify}>
-          <ShieldCheck size={22} strokeWidth={2.5} />
-          <span>Verify Claim Authenticity</span>
-        </button>
+      <div className="verify-panel">
+        <div className="verify-loader">
+          <div className="spinner-ring"></div>
+          <span className="verify-loader-text">Analyzing across verified databases...</span>
+        </div>
       </div>
     );
   }
 
-  if (isVerifying) {
-    return (
-      <div className="verify-module glass-box loader-box">
-        <div className="spinner-formal"></div>
-        <div className="loader-text">Analyzing references across verified databases...</div>
-      </div>
-    );
-  }
-
+  // done: result panel
   const scoreClass = getTrustColorClass(result.score);
-
   return (
-    <div className={`verify-module glass-box analysis-result ${scoreClass}`}>
-      <div className="analysis-header">
-        <ShieldCheck size={20} />
-        <span>Verification Complete</span>
-      </div>
-      
-      <div className="score-dashboard">
-        <div className="score-ring">
-          {result.score}
-        </div>
-        <div>
-          <div className="score-title">{getTrustLabel(result.score)}</div>
-          <div className="score-desc">{result.summary}</div>
-        </div>
-      </div>
-
-      <div className="data-sources">
-        <div className="src-title">
-          <Database size={16} /> References Reviewed ({result.sources.length})
-        </div>
-        {result.sources.map((src, i) => (
-          <div key={i} className="src-item">
-            <Link2 size={16} color="var(--primary-color)" />
-            <span>{src}</span>
+    <div className={`verify-panel ${scoreClass}`}>
+      <div className="verify-result">
+        <div className="verify-result-top">
+          <div className="trust-score">{result.score}</div>
+          <div>
+            <div className="trust-label">{getTrustLabel(result.score)}</div>
+            <div className="trust-desc">{result.summary}</div>
           </div>
-        ))}
+        </div>
+        <div className="verify-sources">
+          <div className="verify-sources-title">
+            <Database size={12} /> References ({result.sources.length})
+          </div>
+          {result.sources.map((src, i) => (
+            <div key={i} className="verify-source-item">
+              <Link2 size={12} color="var(--primary)" />
+              <span>{src}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 };
 
 const PostItem = ({ post }) => {
+  const [verifyState, setVerifyState] = useState('idle');
+  const [verifyResult, setVerifyResult] = useState(null);
+  
+  // Micro-interaction states
+  const [isLiked, setIsLiked] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+  const [likesCount, setLikesCount] = useState(post.likes);
+  const [sharesCount, setSharesCount] = useState(post.retweets);
+
+  const handleVerify = async () => {
+    if (verifyState !== 'idle') return;
+    setVerifyState('loading');
+    const res = await verifyClaim(post.content);
+    setVerifyResult(res);
+    setVerifyState('done');
+  };
+
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+  };
+
+  const handleShare = () => {
+    setIsShared(!isShared);
+    setSharesCount(prev => isShared ? prev - 1 : prev + 1);
+  };
+
+  const scoreClass = verifyResult ? getTrustColorClass(verifyResult.score) : '';
+
   return (
     <div className="post-card">
-      <div className="post-meta">
+      <div className="post-header">
         <img src={post.avatar} alt={post.author} />
-        <div className="author-info">
-          <span className="author-name">{post.author}</span>
-          <span className="author-handle">{post.handle} · {post.time}</span>
+        <div className="post-author-info">
+          <span className="post-author-name">{post.author}</span>
+          <span className="post-author-meta">{post.handle} · {post.time}</span>
         </div>
-        <MoreHorizontal size={20} color="var(--text-secondary)" style={{ marginLeft: 'auto' }} />
+        <button className="post-more-btn">
+          <MoreHorizontal size={16} />
+        </button>
       </div>
 
-      <div className="post-content">{post.content}</div>
-      
-      <VerifyWidget text={post.content} />
+      <div className="post-body">{post.content}</div>
 
-      <div className="engagement-actions">
-        <button className="action-btn-sm"><MessageSquare size={20} /> {post.replies}</button>
-        <button className="action-btn-sm"><Repeat2 size={20} /> {post.retweets}</button>
-        <button className="action-btn-sm"><Heart size={20} /> {post.likes}</button>
-        <button className="action-btn-sm"><Share size={20} /></button>
+      {/* Footer: engagement + subtle verify trigger */}
+      <div className="post-footer">
+        <div className="post-engagement">
+          <button className="engage-btn"><MessageSquare size={15} /> {post.replies}</button>
+          <button 
+            className={`engage-btn ${isShared ? 'active-share' : ''}`}
+            onClick={handleShare}
+          >
+            <Repeat2 size={15} /> {sharesCount}
+          </button>
+          <button 
+            className={`engage-btn ${isLiked ? 'active-endorse' : ''}`}
+            onClick={handleLike}
+          >
+            <Heart size={15} fill={isLiked ? "currentColor" : "none"} /> {likesCount}
+          </button>
+        </div>
+        <button 
+          className="verify-trigger" 
+          onClick={handleVerify}
+          style={verifyState !== 'idle' ? { color: 'var(--accent-teal)', background: 'var(--accent-teal-soft)' } : {}}
+        >
+          <ShieldCheck size={14} />
+          {verifyState === 'idle' ? 'Verify' : verifyState === 'loading' ? 'Checking...' : 'Verified'}
+        </button>
       </div>
+
+      {/* Expandable verification panel */}
+      {verifyState === 'loading' && (
+        <div className="verify-panel">
+          <div className="verify-loader">
+            <div className="spinner-ring"></div>
+            <span className="verify-loader-text">Analyzing across verified databases...</span>
+          </div>
+        </div>
+      )}
+
+      {verifyState === 'done' && verifyResult && (
+        <div className={`verify-panel ${scoreClass}`}>
+          <div className="verify-result">
+            <div className="verify-result-top">
+              <div className="trust-score">{verifyResult.score}</div>
+              <div>
+                <div className="trust-label">{getTrustLabel(verifyResult.score)}</div>
+                <div className="trust-desc">{verifyResult.summary}</div>
+              </div>
+            </div>
+            <div className="verify-sources">
+              <div className="verify-sources-title">
+                <Database size={12} /> References ({verifyResult.sources.length})
+              </div>
+              {verifyResult.sources.map((src, i) => (
+                <div key={i} className="verify-source-item">
+                  <Link2 size={12} color="var(--primary)" />
+                  <span>{src}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
+// Skeleton Loader Component
+const SkeletonPost = () => (
+  <div className="post-card">
+    <div className="post-header">
+      <div className="skeleton-box skeleton-avatar"></div>
+      <div className="post-author-info" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div className="skeleton-box skeleton-text short"></div>
+        <div className="skeleton-box skeleton-text medium" style={{ height: '8px' }}></div>
+      </div>
+    </div>
+    <div style={{ padding: '8px 0' }}>
+      <div className="skeleton-box skeleton-text"></div>
+      <div className="skeleton-box skeleton-text"></div>
+      <div className="skeleton-box skeleton-text medium"></div>
+    </div>
+    <div className="post-footer">
+      <div className="skeleton-box skeleton-text" style={{ width: '120px', margin: 0 }}></div>
+      <div className="skeleton-box skeleton-text" style={{ width: '60px', margin: 0 }}></div>
+    </div>
+  </div>
+);
 
 function App() {
   const [posts, setPosts] = useState([
@@ -190,6 +279,25 @@ function App() {
   ]);
 
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Dynamic header blur effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Simulate initial network latency for skeleton dopamine effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const submitPost = () => {
     if (!input.trim()) return;
@@ -207,117 +315,130 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      {/* Formal Left Sidebar, completely filling margin */}
-      <aside className="global-sidebar">
-        <a href="#" className="brand">
-          <Activity size={32} strokeWidth={2.5} className="brand-logo" />
+    <div className="app-shell instagram-layout">
+      {/* Left Sidebar */}
+      <aside className="sidebar-left">
+        <a href="#" className="sidebar-brand">
+          <Activity size={24} strokeWidth={2.5} />
           <span>VerifiX</span>
         </a>
 
-        <nav className="nav-menu">
-          <a href="#" className="nav-item active"><Home size={28} /> <span>Home</span></a>
-          <a href="#" className="nav-item"><Search size={28} /> <span>Explore</span></a>
-          <a href="#" className="nav-item"><Bell size={28} /> <span>Notifications</span></a>
-          <a href="#" className="nav-item"><Mail size={28} /> <span>Messages</span></a>
-          <a href="#" className="nav-item"><User size={28} /> <span>Profile</span></a>
-        </nav>
-
-        <button className="btn-primary" style={{ width: '100%', marginTop: '2rem' }}>Post</button>
-        
-        <div className="user-profile">
-          <img src={currentUser.avatar} alt="User" />
-          <div className="user-info">
-            <div className="u-name">{currentUser.name}</div>
-            <div className="u-handle">{currentUser.handle}</div>
+        {/* User Profile Area */}
+        <div className="sidebar-profile">
+          <img src={currentUser.avatar} alt="User" className="profile-avatar-lg" />
+          <h2 className="profile-name">{currentUser.name}</h2>
+          <span className="profile-handle">{currentUser.handle}</span>
+          
+          <div className="profile-stats">
+            <div className="stat"><strong>472</strong><span>Claims</span></div>
+            <div className="stat"><strong>12.4K</strong><span>Trusted</span></div>
+            <div className="stat"><strong>228</strong><span>Following</span></div>
           </div>
-          <MoreHorizontal size={20} style={{ marginLeft: 'auto', color: 'var(--text-secondary)' }} />
+          
+          <div className="profile-bio">
+            Independent Fact Checker | Top Contributor | Verified Expert
+          </div>
         </div>
+
+        {/* Navigation */}
+        <div className="sidebar-nav">
+          <a href="#" className="nav-link active"><Home size={18} /> Feed</a>
+          <a href="#" className="nav-link"><Search size={18} /> Explore</a>
+          <a href="#" className="nav-link"><ShieldCheck size={18} /> Investigations</a>
+          <a href="#" className="nav-link"><Bell size={18} /> Alerts</a>
+          <a href="#" className="nav-link"><TrendingUp size={18} /> Trending</a>
+        </div>
+
+        <button className="nav-link logout-btn"><AlertCircle size={18} /> Logout</button>
       </aside>
 
-      {/* Main Feed Centered Area */}
-      <main className="main-feed">
-        <header className="feed-header">
-          <h2>Home Feed</h2>
+      {/* Main Content Area */}
+      <main className="main-content">
+        <header className="main-header">
+          <div className="header-search">
+            <Search size={16} />
+            <input type="text" placeholder="Search claims, topics, or publishers..." />
+          </div>
+          <div className="header-actions">
+            <button className="icon-btn"><Bell size={18} /></button>
+            <button className="icon-btn"><MessageSquare size={18} /></button>
+            <button className="btn-submit" onClick={submitPost} disabled={!input.trim()}>
+              <Send size={15} /> Submit Claim
+            </button>
+          </div>
         </header>
 
-        <div className="composer-formal">
-          <img src={currentUser.avatar} alt="Current" className="composer-avatar" />
-          <div className="composer-body">
-            <textarea 
-              className="composer-textarea" 
-              placeholder="What is happening?!" 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-            />
-            <div className="composer-toolbar">
-              <div className="media-actions">
-                <button className="icon-btn"><Image size={22} /></button>
-                <button className="icon-btn"><Smile size={22} /></button>
-                <button className="icon-btn"><AlertCircle size={22} /></button>
-              </div>
-              <button 
-                className="btn-primary sm-btn" 
-                onClick={submitPost}
-                disabled={!input.trim()}
-              >
-                Post
-              </button>
+        {/* Stories / Active Investigations */}
+        <div className="stories-section">
+          <h3 className="section-title">Active Investigations</h3>
+          <div className="stories-row">
+            <div className="story-item">
+              <div className="story-ring active"><img src={currentUser.avatar} alt="You" /></div>
+              <span>Your Case</span>
+            </div>
+            <div className="story-item">
+              <div className="story-ring active"><img src="https://i.pravatar.cc/150?u=tech" alt="Story" /></div>
+              <span>Tech Insider</span>
+            </div>
+            <div className="story-item">
+              <div className="story-ring"><img src="https://i.pravatar.cc/150?u=bot" alt="Story" /></div>
+              <span>Truth Bot</span>
+            </div>
+            <div className="story-item">
+              <div className="story-ring active"><img src="https://i.pravatar.cc/150?u=sarah" alt="Story" /></div>
+              <span>Sarah Smith</span>
+            </div>
+            <div className="story-item">
+              <div className="story-ring"><img src="https://i.pravatar.cc/150?u=reuters" alt="Story" /></div>
+              <span>Reuters</span>
+            </div>
+            <div className="story-item">
+              <div className="story-ring"><img src="https://i.pravatar.cc/150?u=ap" alt="Story" /></div>
+              <span>Associated Press</span>
             </div>
           </div>
         </div>
 
-        <div className="post-list">
-          {posts.map(post => (
-            <PostItem key={post.id} post={post} />
-          ))}
+        {/* Composer (Grid area) */}
+        <div className="claim-composer">
+          <div className="composer-input-area">
+            <img src={currentUser.avatar} alt="User" className="composer-avatar-sm" />
+            <div className="composer-input-wrapper">
+              <textarea 
+                className="composer-textarea" 
+                placeholder="Enter a claim or statement to verify..." 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+              />
+              <div className="composer-actions">
+                <div className="composer-tools">
+                  <button className="tool-btn"><Image size={18} /></button>
+                  <button className="tool-btn"><Link2 size={18} /></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Feed Grid */}
+        <div className="feed-section">
+          <h3 className="section-title">Feed</h3>
+          <div className="post-feed grid-layout">
+            {isLoading ? (
+              <>
+                <SkeletonPost />
+                <SkeletonPost />
+                <SkeletonPost />
+                <SkeletonPost />
+              </>
+            ) : (
+              posts.map(post => (
+                <PostItem key={post.id} post={post} />
+              ))
+            )}
+          </div>
         </div>
       </main>
-
-      {/* Right Content Panel taking exactly its side */}
-      <aside className="global-right-panel">
-        <div className="search-bar">
-          <Search size={20} color="var(--text-secondary)" />
-          <input type="text" placeholder="Search VerifiX" />
-        </div>
-
-        <div className="info-card">
-          <h3 className="card-title">Trending Topics</h3>
-          <div className="trend-row">
-            <div className="t-meta">Technology · Trending</div>
-            <div className="t-head">#NeuralNetworks</div>
-            <div className="t-foot">120K Verification Nodes</div>
-          </div>
-          <div className="trend-row">
-            <div className="t-meta">Science · Trending</div>
-            <div className="t-head">Water Facts</div>
-            <div className="t-foot">15.4K Verify Requests</div>
-          </div>
-          <div className="trend-row">
-            <div className="t-meta">News · Trending</div>
-            <div className="t-head">Space Exploration</div>
-            <div className="t-foot">89.2K Verify Requests</div>
-          </div>
-        </div>
-
-        <div className="info-card">
-          <h3 className="card-title">Verified Publishers</h3>
-          <div className="publisher-row">
-            <img src="https://i.pravatar.cc/150?u=reuters" alt="Rtrs" />
-            <div className="pub-info">
-              <div className="pub-name">Reuters News <CheckCircle2 size={16} color="var(--primary-color)" /></div>
-              <div className="pub-handle">@Reuters</div>
-            </div>
-          </div>
-          <div className="publisher-row">
-            <img src="https://i.pravatar.cc/150?u=ap" alt="AP" />
-            <div className="pub-info">
-              <div className="pub-name">Associated Press <CheckCircle2 size={16} color="var(--primary-color)" /></div>
-              <div className="pub-handle">@AP</div>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
   );
 }
