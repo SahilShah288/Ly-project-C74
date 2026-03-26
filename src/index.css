@@ -1,23 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --bg-base: #000000;
-  --bg-surface: rgba(5, 5, 8, 0.7);
-  --bg-glass: rgba(10, 10, 14, 0.5);
-  --bg-glass-strong: rgba(15, 15, 20, 0.6);
-  --bg-glass-hover: rgba(20, 20, 28, 0.55);
-  --bg-glass-subtle: rgba(255, 255, 255, 0.02);
+  --bg-base: #050b14;
+  --bg-surface: rgba(10, 16, 28, 0.72);
+  --bg-glass: rgba(16, 24, 38, 0.56);
+  --bg-glass-strong: rgba(20, 30, 48, 0.66);
+  --bg-glass-hover: rgba(26, 38, 58, 0.62);
+  --bg-glass-subtle: rgba(255, 255, 255, 0.04);
   --primary: #00f0ff;
-  --primary-soft: rgba(0, 240, 255, 0.12);
-  --primary-glow: rgba(0, 240, 255, 0.08);
+  --primary-soft: rgba(0, 240, 255, 0.2);
+  --primary-glow: rgba(0, 240, 255, 0.16);
   --accent-teal: #00d2ff;
-  --accent-teal-soft: rgba(0, 210, 255, 0.08);
-  --accent-teal-glow: rgba(0, 210, 255, 0.04);
+  --accent-teal-soft: rgba(0, 210, 255, 0.16);
+  --accent-teal-glow: rgba(0, 210, 255, 0.1);
   --text-primary: #f2f4f7;
-  --text-secondary: #8b92a5;
-  --text-muted: #565d73;
-  --border-glass: rgba(255, 255, 255, 0.04);
-  --border-glass-hover: rgba(255, 255, 255, 0.08);
+  --text-secondary: #b4bed0;
+  --text-muted: #8a95ab;
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-glass-hover: rgba(255, 255, 255, 0.14);
   --border-accent: rgba(0, 240, 255, 0.35);
   --danger: #ff4757;
   --warning: #ffa502;
@@ -29,8 +29,8 @@
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 24px;
-  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.25);
-  --shadow-glow: 0 0 40px rgba(0, 240, 255, 0.2);
+  --shadow-soft: 0 10px 32px rgba(0, 0, 0, 0.22);
+  --shadow-glow: 0 0 56px rgba(0, 240, 255, 0.34);
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -39,8 +39,9 @@
 body {
   background: var(--bg-base);
   background-image:
-    radial-gradient(ellipse 70% 50% at 10% 20%, rgba(0, 240, 255, 0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(0, 240, 255, 0.04) 0%, transparent 60%);
+    radial-gradient(ellipse 78% 58% at 8% 16%, rgba(0, 240, 255, 0.2) 0%, transparent 62%),
+    radial-gradient(ellipse 70% 46% at 92% 82%, rgba(0, 210, 255, 0.14) 0%, transparent 66%),
+    radial-gradient(ellipse 58% 36% at 50% -8%, rgba(110, 180, 255, 0.1) 0%, transparent 72%);
   color: var(--text-primary);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -530,7 +531,7 @@ a { color: inherit; text-decoration: none; }
   justify-content: center;
   font-size: 1.15rem;
   font-weight: 800;
-  background: rgba(8, 11, 18, 0.6);
+  background: rgba(20, 30, 48, 0.75);
   flex-shrink: 0;
 }
 .trust-high .trust-score { border: 2.5px solid var(--success); color: var(--success); box-shadow: 0 0 16px rgba(76, 216, 157, 0.12); }
@@ -553,7 +554,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .verify-sources {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: var(--radius-sm);
   padding: 0.7rem;
 }
